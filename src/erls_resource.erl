@@ -64,7 +64,7 @@ do_request(#erls_params{host=Host, port=Port, timeout=Timeout},
                                           ; Status =:= 201 ->
             case hackney:body(Client) of
                 {ok, RespBody, _Client1} ->
-                    {ok, jsx:decode(RespBody)};
+                    {ok, decode(RespBody)};
                 {error, _Reason} = Error ->
                     Error
             end;
@@ -99,3 +99,9 @@ make_body(Body, Headers, Options) when is_binary(Body) ->
 make_body(_, _, _) ->
     {error, <<"body invalid">>}.
 
+decode(Json) when is_binary(Json) ->
+    case mochijson2:decode(Json) of
+	{struct, Pairs} ->
+	    Pairs;
+	 Term -> Term
+    end.

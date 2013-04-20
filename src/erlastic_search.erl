@@ -79,7 +79,7 @@ index_doc(Index, Type, Doc) ->
 %%--------------------------------------------------------------------
 -spec index_doc(record(erls_params), binary(), binary(), list()) -> {ok, list()} | {error, any()}.
 index_doc(Params, Index, Type, Doc) when is_list(Doc) ->
-    Json = jsx:encode(Doc),
+    Json = encode(Doc),
     erls_resource:post(Params, filename:join(Index, Type), [], [], Json, []).
 
 %%--------------------------------------------------------------------
@@ -102,7 +102,7 @@ index_doc_with_id(Index, Type, Id, Doc) when is_list(Doc) ->
 %%--------------------------------------------------------------------
 -spec index_doc_with_id(record(erls_params), binary(), binary(), binary(), list() | binary()) -> {ok, list()} | {error, any()}.
 index_doc_with_id(Params, Index, Type, Id, Doc) when is_list(Doc) ->
-    Json = jsx:encode(Doc),
+    Json = encode(Doc),
     index_doc_with_id(Params, Index, Type, Id, Json);
 index_doc_with_id(Params, Index, Type, Id, Json) when is_binary(Json) ->
     index_doc_with_id_opts(Params, Index, Type, Id, Json, []).
@@ -114,12 +114,12 @@ index_doc_with_id_opts(Params, Index, Type, Id, Json, Opts) when is_binary(Json)
 %% Documents is [ {Index, Type, Id, Json}, ... ]
 bulk_index_docs(Params, IndexTypeIdJsonTuples) ->
     Body = lists:map(fun({Index, Type, Id, Json}) ->
-                             Header = jsx:encode([
-                                                  {<<"index">>, [{[
-                                                                  {<<"_index">>, Index},
-                                                                  {<<"_type">>, Type},
-                                                                  {<<"_id">>, Id}
-                                                                  ]}]}]),
+                             Header = encode([
+					      {<<"index">>, [{[
+							       {<<"_index">>, Index},
+							       {<<"_type">>, Type},
+							       {<<"_id">>, Id}
+							      ]}]}]),
                              [Header, <<"\n">>, Json,<<"\n">>]
                      end, IndexTypeIdJsonTuples),
     erls_resource:post(Params, <<"/_bulk">>, [], [], Body, []).
@@ -223,3 +223,5 @@ commas([]) ->
 commas([H | T]) ->
     << H/binary, << <<",", B/binary>> || B <- T >> >>.
 
+encode(Term) ->
+    list_to_binary(mochijson2:encode(Term)).
