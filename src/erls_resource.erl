@@ -100,8 +100,13 @@ make_body(_, _, _) ->
     {error, <<"body invalid">>}.
 
 decode(Json) when is_binary(Json) ->
-    case mochijson2:decode(Json) of
-	{struct, Pairs} ->
-	    Pairs;
-	 Term -> Term
-    end.
+    demochify(mochijson2:decode(Json)).
+
+demochify(Xs) when is_list(Xs) ->
+    lists:map(fun demochify/1, Xs);
+demochify({struct, Pairs}) ->
+    demochify(Pairs);
+demochify({Key, Value}) ->
+    {Key, demochify(Value)};
+demochify(Term) ->
+    Term.
