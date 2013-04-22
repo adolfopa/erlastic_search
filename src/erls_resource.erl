@@ -55,22 +55,31 @@ request(State, Method, Path, Headers, Params, Body, Options) ->
              do_request(State, Method, Path1, Headers, <<>>, Options)
      end.
 
+-define(CONTENT_TYPE, "application/json").
+
 do_request(#erls_params{host=Host, port=Port, timeout=Timeout},
            Method, Path, Headers, Body, Options) ->
-    case hackney:request(Method, <<Host/binary, ":", (list_to_binary(integer_to_list(Port)))/binary,
-                                   "/", Path/binary>>, Headers, Body,
-                         [{recv_timeout, Timeout} | Options]) of
-        {ok, Status, _Headers, Client} when Status =:= 200
-                                          ; Status =:= 201 ->
-            case hackney:body(Client) of
-                {ok, RespBody, _Client1} ->
-                    {ok, decode(RespBody)};
-                {error, _Reason} = Error ->
-                    Error
-            end;
-        {ok, Status, _Headers, _Client} ->
-            {error, Status}
+    HttpOptions = [{timeout, Timeout}|Options],
+    URL = make_url(Host, Port, Path),
+    case send_request(Method, URL, headers_to_list(Headers), ?CONTENT_TYPE, Body, HttpOptions, []) of
+        {ok, {{_, Status, _}, _Headers, Response}} when Status =:= 200 orelse Status =:= 201 ->
+	    {ok, decode(Response)};
+	{ok, {{_, Status, _}, _Headers, _Response}} ->
+	    {error, Status};
+	{error, Reason} ->
+	    {error, Reason}
     end.
+
+send_request(Method = get, Url, Headers, _ContentType, _Body, HttpOpts, Opts) ->
+    httpc:request(Method, {Url, Headers}, HttpOpts, Opts);
+send_request(Method, Url, Headers, ContentType, Body, HttpOpts, Opts) ->
+    httpc:request(Method, {Url, Headers, ContentType, Body}, HttpOpts, Opts).
+									      
+make_url(Host, Port, Path) ->
+    binary_to_list(<<Host/binary, ":", (list_to_binary(integer_to_list(Port)))/binary, "/", Path/binary>>).
+
+headers_to_list(Headers) ->
+    [{binary_to_list(K), binary_to_list(V)} || {K, V} <- Headers].
 
 encode_query(Props) ->
     P = fun({A,B}, AccIn) -> io_lib:format("~s=~s&", [A,B]) ++ AccIn end,
@@ -99,7 +108,7 @@ make_body(Body, Headers, Options) when is_binary(Body) ->
 make_body(_, _, _) ->
     {error, <<"body invalid">>}.
 
-decode(Json) when is_binary(Json) ->
+decode(Json) ->
     demochify(mochijson2:decode(Json)).
 
 demochify(Xs) when is_list(Xs) ->
