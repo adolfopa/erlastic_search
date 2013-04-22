@@ -8,7 +8,7 @@
    {applications, [kernel
                   ,stdlib                  
                   ,ssl
-                  ,hackney
-                  ,jsx]},
+                  ,inets
+                  ,mochiweb]},
    {start_phases, []}]}.
 
